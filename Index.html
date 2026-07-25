@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🎯 Tangkap Bintang!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            overflow: hidden;
+            touch-action: manipulation;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(180deg, #0f0c29, #302b63, #24243e);
+        }
+
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            z-index: 10;
+        }
+
+        #gameOverScreen {
+            display: none;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px #ffd700;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            color: #aaa;
+            margin-bottom: 30px;
+            text-align: center;
+            padding: 0 20px;
+            line-height: 1.6;
+        }
+
+        .btn {
+            padding: 15px 50px;
+            font-size: 1.3em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            box-shadow: 0 5px 25px rgba(245, 87, 108, 0.5);
+        }
+
+        .btn-restart {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+            box-shadow: 0 5px 25px rgba(79, 172, 254, 0.5);
+        }
+
+        .final-score {
+            font-size: 4em;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            margin: 10px 0;
+        }
+
+        .high-score {
+            font-size: 1.2em;
+            color: #4facfe;
+            margin-bottom: 20px;
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
+            background: linear-gradient(180deg, rgba(0,0,0,0.6), transparent);
+        }
+
+        .hud-item {
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .hud-item span {
+            color: #ffd700;
+        }
+
+        #combo {
+            position: absolute;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
+            pointer-events: none;
+            z-index: 6;
+            animation: comboAnim 0.8s ease-out forwards;
+        }
+
+        @keyframes comboAnim {
+            0% { transform: scale(0.5); opacity: 1; }
+            50% { transform: scale(1.5); }
+            100% { transform: scale(1) translateY(-50px); opacity: 0; }
+        }
+
+        .emoji-float {
+            position: absolute;
+            font-size: 2em;
+            pointer-events: none;
+            z-index: 6;
+            animation: floatUp 1s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
+        }
+
+        .instructions {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0 25px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .instruction-item {
+            text-align: center;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+
+        .instruction-item .icon {
+            font-size: 2em;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .difficulty {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .diff-btn {
+            padding: 10px 20px;
+            border: 2px solid #555;
+            background: transparent;
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .diff-btn.active {
+            border-color: #f5576c;
+            background: rgba(245, 87, 108, 0.2);
+            color: #f5576c;
+        }
+
+        .diff-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Start Screen -->
+<div id="startScreen">
+    <h1>🎯 Tangkap Bintang!</h1>
+    <div class="subtitle">
+        Tangkap bintang ⭐ untuk dapat poin!<br>
+        Hindari bom 💣 atau game over!
+    </div>
+    <div class="instructions">
+        <div class="instruction-item">
+            <span class="icon">⭐</span>
+            +10 Poin
+        </div>
+        <div class="instruction-item">
+            <span class="icon">🌟</span>
+            +25 Poin
+        </div>
+        <div class="instruction-item">
+            <span class="icon">💎</span>
+            +50 Poin
+        </div>
+        <div class="instruction-item">
+            <span class="icon">💣</span>
+            Game Over!
+        </div>
+    </div>
+    <div class="difficulty">
+        <button class="diff-btn" onclick="setDifficulty('easy')" id="diffEasy">😊 Mudah</button>
+        <button class="diff-btn active" onclick="setDifficulty('normal')" id="diffNormal">😎 Normal</button>
+        <button class="diff-btn" onclick="setDifficulty('hard')" id="diffHard">🔥 Sulit</button>
+    </div>
+    <button class="btn btn-start" onclick="startGame()">🚀 MULAI</button>
+</div>
+
+<!-- Game Over Screen -->
+<div id="gameOverScreen">
+    <h1>💥 Game Over!</h1>
+    <div class="final-score" id="finalScore">0</div>
+    <div class="high-score" id="highScore">Skor Tertinggi: 0</div>
+    <button class="btn btn-restart" onclick="startGame()">🔄 MAIN LAGI</button>
+</div>
+
+<!-- HUD -->
+<div id="hud" style="display:none;">
+    <div class="hud-item">⭐ <span id="scoreDisplay">0</span></div>
+    <div class="hud-item">🔥 <span id="comboDisplay">x1</span></div>
+    <div class="hud-item">❤️ <span id="livesDisplay">3</span></div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    // ============ SETUP ============
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const startScreen = document.getElementById('startScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const hud = document.getElementById('hud');
+
+    let W, H;
+    let gameRunning = false;
+    let score = 0;
+    let lives = 3;
+    let highScore = parseInt(localStorage.getItem('starGameHighScore')) || 0;
+    let combo = 0;
+    let comboTimer = 0;
+    let difficulty = 'normal';
+    let objects = [];
+    let particles = [];
+    let spawnTimer = 0;
+    let gameSpeed = 1;
+    let animationId;
+    let bgStars = [];
+
+    // Difficulty settings
+    const diffSettings = {
+        easy:   { spawnRate: 60,  speed: 2, bombChance: 0.12, lives: 5 },
+        normal: { spawnRate: 45,  speed: 3, bombChance: 0.18, lives: 3 },
+        hard:   { spawnRate: 30,  speed: 4.5, bombChance: 0.28, lives: 2 }
+    };
+
+    function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+        // Generate background stars
+        bgStars = [];
+        for (let i = 0; i < 80; i++) {
+            bgStars.push({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                r: Math.random() * 2 + 0.5,
+                twinkle: Math.random() * Math.PI * 2,
+                speed: Math.random() * 0.02 + 0.01
+            });
+        }
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ============ DIFFICULTY ============
+    function setDifficulty(diff) {
+        difficulty = diff;
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('diff' + diff.charAt(0).toUpperCase() + diff.slice(1)).classList.add('active');
+    }
+
+    // ============ OBJECT TYPES ============
+    const objectTypes = [
+        { emoji: '⭐', points: 10,  size: 35, type: 'star' },
+        { emoji: '🌟', points: 25,  size: 32, type: 'goldstar' },
+        { emoji: '💎', points: 50,  size: 30, type: 'diamond' },
+        { emoji: '💣', points: 0,   size: 35, type: 'bomb' },
+        { emoji: '❤️', points: 0,   size: 30, type: 'heart' },
+    ];
+
+    function spawnObject() {
+        const settings = diffSettings[difficulty];
+        let rand = Math.random();
+        let type;
+
+        if (rand < settings.bombChance) {
+            type = objectTypes[3]; // bomb
+        } else if (rand < settings.bombChance + 0.05) {
+            type = objectTypes[2]; // diamond
+        } else if (rand < settings.bombChance + 0.15) {
+            type = objectTypes[1]; // gold star
+        } else if (rand < settings.bombChance + 0.18) {
+            type = objectTypes[4]; // heart
+        } else {
+            type = objectTypes[0]; // star
+        }
+
+        const x = Math.random() * (W - 60) + 30;
+        const speed = settings.speed * (0.7 + Math.random() * 0.6) * gameSpeed;
+
+        objects.push({
+            x: x,
+            y: -40,
+            speed: speed,
+            size: type.size,
+            emoji: type.emoji,
+            points: type.points,
+            type: type.type,
+            rotation: 0,
+            rotSpeed: (Math.random() - 0.5) * 0.1,
+            wobble: Math.random() * Math.PI * 2,
+            wobbleSpeed: Math.random() * 0.03 + 0.02,
+            wobbleAmount: Math.random() * 1.5 + 0.5
+        });
+    }
+
+    // ============ PARTICLES ============
+    function createParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+            const speed = Math.random() * 4 + 2;
+            particles.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 1,
+                decay: Math.random() * 0.03 + 0.02,
+                color: color,
+                size: Math.random() * 4 + 2
+            });
+        }
+    }
+
+    // ============ FLOATING TEXT ============
+    function showFloatingText(x, y, text) {
+        const el = document.createElement('div');
+        el.className = 'emoji-float';
+        el.textContent = text;
+        el.style.left = (x - 20) + 'px';
+        el.style.top = y + 'px';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
+    function showCombo(x, y) {
+        if (combo < 2) return;
+        const el = document.createElement('div');
+        el.id = 'combo';
+        el.textContent = `🔥 x${combo} COMBO!`;
+        el.style.left = (x - 70) + 'px';
+        el.style.top = (y - 40) + 'px';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 800);
+    }
+
+    // ============ INPUT ============
+    function handleInput(clientX, clientY) {
+        if (!gameRunning) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const tapX = clientX - rect.left;
+        const tapY = clientY - rect.top;
+
+        let hit = false;
+
+        for (let i = objects.length - 1; i >= 0; i--) {
+            const obj = objects[i];
+            const dx = tapX - obj.x;
+            const dy = tapY - obj.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < obj.size + 15) {
+                hit = true;
+
+                if (obj.type === 'bomb') {
+                    // Hit bomb!
+                    createParticles(obj.x, obj.y, '#ff4444', 20);
+                    showFloatingText(obj.x, obj.y, '💥');
+                    lives--;
+                    combo = 0;
+                    updateHUD();
+                    objects.splice(i, 1);
+
+                    if (lives <= 0) {
+                        gameOver();
+                    }
+                } else if (obj.type === 'heart') {
+                    // Collect heart
+                    createParticles(obj.x, obj.y, '#ff6b6b', 15);
+                    showFloatingText(obj.x, obj.y, '❤️+1');
+                    lives = Math.min(lives + 1, 5);
+                    combo++;
+                    objects.splice(i, 1);
+                    updateHUD();
+                } else {
+                    // Collect star/diamond
+                    combo++;
+                    comboTimer = 120;
+                    const bonus = obj.points * Math.max(1, Math.floor(combo / 3));
+                    score += bonus;
+                    
+                    let color = obj.type === 'diamond' ? '#4facfe' : '#ffd700';
+                    createParticles(obj.x, obj.y, color, 12);
+                    showFloatingText(obj.x, obj.y, `+${bonus}`);
+                    showCombo(obj.x, obj.y);
+                    objects.splice(i, 1);
+                    updateHUD();
+                }
+                break;
+            }
+        }
+    }
+
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        handleInput(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    canvas.addEventListener('mousedown', (e) => {
+        handleInput(e.clientX, e.clientY);
+    });
+
+    // ============ HUD ============
+    function updateHUD() {
+        document.getElementById('scoreDisplay').textContent = score;
+        document.getElementById('comboDisplay').textContent = 'x' + Math.max(1, Math.floor(combo / 3) + 1);
+        document.getElementById('livesDisplay').textContent = lives;
+    }
+
+    // ============ GAME LOOP ============
+    function startGame() {
+        startScreen.style.display = 'none';
+        gameOverScreen.style.display = 'none';
+        hud.style.display = 'flex';
+
+        score = 0;
+        lives = diffSettings[difficulty].lives;
+        combo = 0;
+        comboTimer = 0;
+        objects = [];
+        particles = [];
+        spawnTimer = 0;
+        gameSpeed = 1;
+        gameRunning = true;
+        updateHUD();
+
+        if (animationId) cancelAnimationFrame(animationId);
+        gameLoop();
+    }
+
+    function gameOver() {
+        gameRunning = false;
+        hud.style.display = 'none';
+
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('starGameHighScore', highScore);
+        }
+
+        document.getElementById('finalScore').textContent = score;
+        document.getElementById('highScore').textContent = `🏆 Skor Tertinggi: ${highScore}`;
+        gameOverScreen.style.display = 'flex';
+    }
+
+    function gameLoop() {
+        if (!gameRunning) return;
+        animationId = requestAnimationFrame(gameLoop);
+
+        // Clear
+        ctx.clearRect(0, 0, W, H);
+
+        // Draw background gradient
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, '#0f0c29');
+        grad.addColorStop(0.5, '#302b63');
+        grad.addColorStop(1, '#24243e');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Draw background stars
+        bgStars.forEach(s => {
+            s.twinkle += s.speed;
+            const alpha = 0.3 + Math.sin(s.twinkle) * 0.3;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fill();
+        });
+
+        // Increase difficulty over time
+        gameSpeed = 1 + score / 500 * 0.3;
+
+        // Combo timer
+        if (comboTimer > 0) {
+            comboTimer--;
+            if (comboTimer <= 0) combo = 0;
+        }
+
+        // Spawn
+        spawnTimer++;
+        const spawnRate = Math.max(20, diffSettings[difficulty].spawnRate - score / 100);
+        if (spawnTimer >= spawnRate) {
+            spawnTimer = 0;
+            spawnObject();
+            // Extra object at higher scores
+            if (score > 200 && Math.random() < 0.3) spawnObject();
+            if (score > 500 && Math.random() < 0.2) spawnObject();
+        }
+
+        // Update & draw objects
+        for (let i = objects.length - 1; i >= 0; i--) {
+            const obj = objects[i];
+            obj.y += obj.speed;
+            obj.rotation += obj.rotSpeed;
+            obj.wobble += obj.wobbleSpeed;
+            const wobbleX = Math.sin(obj.wobble) * obj.wobbleAmount;
+
+            // Draw glow
+            if (obj.type !== 'bomb') {
+                ctx.save();
+                ctx.globalAlpha = 0.3;
+                ctx.beginPath();
+                ctx.arc(obj.x + wobbleX, obj.y, obj.size + 10, 0, Math.PI * 2);
+                const glowColor = obj.type === 'diamond' ? '#4facfe' : '#ffd700';
+                ctx.fillStyle = glowColor;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Draw emoji
+            ctx.save();
+            ctx.translate(obj.x + wobbleX, obj.y);
+            ctx.rotate(obj.rotation);
+            ctx.font = `${obj.size}px serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(obj.emoji, 0, 0);
+            ctx.restore();
+
+            // Remove if off screen
+            if (obj.y > H + 50) {
+                // Missed a star - lose combo
+                if (obj.type !== 'bomb' && obj.type !== 'heart') {
+                    combo = 0;
+                }
+                objects.splice(i, 1);
+            }
+        }
+
+        // Update & draw particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.1; // gravity
+            p.life -= p.decay;
+
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+                continue;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = p.life;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Draw lives as hearts at bottom
+        ctx.save();
+        ctx.font = '20px serif';
+        ctx.textAlign = 'center';
+        let heartsStr = '';
+        for (let i = 0; i < lives; i++) heartsStr += '❤️ ';
+        ctx.fillText(heartsStr.trim(), W / 2, H - 25);
+        ctx.restore();
+    }
+
+    // Show high score on start
+    document.getElementById('highScore').textContent = `🏆 Skor Tertinggi: ${highScore}`;
+</script>
+
+</body>
+</html>
